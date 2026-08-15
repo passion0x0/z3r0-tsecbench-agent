@@ -86,7 +86,7 @@ PROMPT=f"""你是 TSec Benchmark 跑分总指挥(cso)。目标:任务时限内�
 # - submit 之后必须紧跟 close(同一道题),这是一个不可分割的动作对。
 # - 任何一道题终结(解出并提交/放弃)都必须 close,不 close 就是占着茅坑。
 # - 只提交确凿flag。平台返回 invalid_state(超时)立即 close 那道题并换题。
-# - 【同题重试上限】同一道题最多派 2 个专家(或同一专家 retry 1 次)。2 次都没解出=当前能力解不了,永久搁置,去做别的题。不要对同一道题反复投 agent 烧 token。
+# - 【两轮策略】第一轮:每题只派 1 次专家,做不出就 close 标记"待回攻",先把所有题过一遍,优先收割能快速解出的。第二轮:所有题都过完后,回头对"待回攻"的题逐一再派专家重试(换思路/换专家角色),此时可以深挖不限时间。核心思想:先广度覆盖拿容易分,再深度回攻拿难题分。
 # - 【防误提交】并发打多题时,提交前必须确认 flag 来自本题: restate "submitting <flag> to <code> — evidence"。绝不把A题的flag提交给B题。correct:false 时先查是不是提交错了题。
 # - 【多flag题】flag_count>1 的题,拿到1个flag≠完成。提交后继续攻剩余flag,直到 correct_flag_count==flag_count 才 close。
 # - 【报告瘦身】专家回传必须 ≤200字: code|status|flag|vuln|next。禁止JSON原文/表格/长报告,那会挤爆上下文。你也不要在回复里复述专家输出。
