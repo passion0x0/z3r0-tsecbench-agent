@@ -12,6 +12,39 @@ COPY cve-kb /root/cve-kb
 # 应用代码(core/service/...)也会频繁更新,直接在此层覆盖基础镜像 z3r0-hosted:v7 里的旧版本
 COPY core /app/core
 COPY service /app/service
+# ====== 正式赛工具链(Android逆向/加密/逆向分析) ======
+# Java JRE (jadx/apktool 依赖)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    default-jre-headless \
+    binutils \
+    file \
+    && rm -rf /var/lib/apt/lists/*
+
+# radare2 (轻量逆向分析,macOS/ELF binary)
+RUN curl -sL https://github.com/radareorg/radare2/releases/download/6.2.0/radare2_6.2.0_amd64.deb -o /tmp/r2.deb && \
+    dpkg -i /tmp/r2.deb 2>/dev/null || apt-get install -f -y --no-install-recommends && \
+    rm /tmp/r2.deb
+
+
+# jadx (APK 反编译)
+RUN cd /tmp && \
+    curl -sL https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip -o jadx.zip && \
+    unzip -q jadx.zip -d /opt/jadx && \
+    chmod +x /opt/jadx/bin/jadx /opt/jadx/bin/jadx-gui && \
+    ln -s /opt/jadx/bin/jadx /usr/local/bin/jadx && \
+    rm jadx.zip
+
+# apktool (APK 解包/重打包)
+RUN curl -sL https://bitbucket.org/nicholasd/apktool/downloads/apktool_2.9.3.jar -o /usr/local/bin/apktool.jar && \
+    printf '#!/bin/bash\njava -jar /usr/local/bin/apktool.jar "$@"\n' > /usr/local/bin/apktool && \
+    chmod +x /usr/local/bin/apktool
+
+# Python 安全库(加密/解密/JWT/并发竞争)
+RUN pip3 install --no-cache-dir --break-system-packages \
+    pycryptodome \
+    pyjwt \
+    z3-solver
+
 COPY handler /app/handler
 COPY middleware /app/middleware
 COPY model /app/model
