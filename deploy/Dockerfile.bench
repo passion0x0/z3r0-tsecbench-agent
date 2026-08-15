@@ -1,0 +1,28 @@
+# TSecBench 托管模式镜像:基于 z3r0-hosted:v7,换成托管入口(env→config→自动解题)。
+# 构建: docker build -f Dockerfile.bench -t z3r0-hosted-bench .
+FROM z3r0-hosted:v7
+
+# 托管入口 + 自动解题脚本(本地模式这些是运行时 docker cp 进去的,托管需 bake 进镜像)
+COPY hosted/start-bench.sh /usr/local/bin/start-bench.sh
+COPY score_launch.py /score_launch.py
+COPY watch_session.py /watch_session.py
+# skills 和 cve-kb 会频繁更新,直接在此层覆盖,不依赖基础镜像 z3r0-hosted:v7 里的旧版本
+COPY sandbox/.agents /root/.agents
+COPY cve-kb /root/cve-kb
+# 应用代码(core/service/...)也会频繁更新,直接在此层覆盖基础镜像 z3r0-hosted:v7 里的旧版本
+COPY core /app/core
+COPY service /app/service
+COPY handler /app/handler
+COPY middleware /app/middleware
+COPY model /app/model
+COPY router /app/router
+COPY schema /app/schema
+COPY utils /app/utils
+COPY app.py config.py database.py logger.py main.py /app/
+# tiktoken 编码缓存(compaction 的 token 估算需要 cl100k_base/o200k_base,托管无公网必须预下载)
+COPY tiktoken-cache /root/.cache/tiktoken
+
+RUN chmod +x /usr/local/bin/start-bench.sh
+
+# 托管模式:启动即自动解题
+ENTRYPOINT ["/usr/local/bin/start-bench.sh"]

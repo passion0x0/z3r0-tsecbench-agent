@@ -1,0 +1,8 @@
+cve-kb/
+*.tar.gz
+*.pdf
+__pycache__/
+*.pyc
+.DS_Store
+.env
+*.ovpn

@@ -1,0 +1,21 @@
+MIT License
+
+Copyright (c) 2026 passion0x0
+
+本项目为基于开源黑盒红队平台 Z3r0 (https://github.com/yv1ing/Z3r0) 的
+二次开发增量成果。基座框架版权归原作者所有，本仓库仅包含在其之上的
+增量部分（方法论 Skill、编排提示词、部署脚本、知识库构建脚本）。
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+本软件仅供安全研究与授权渗透测试使用。使用者须对其行为负责，
+不得用于未授权的系统。THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY
+OF ANY KIND, EXPRESS OR IMPLIED.
