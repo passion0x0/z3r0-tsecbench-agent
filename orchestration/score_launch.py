@@ -86,6 +86,7 @@ PROMPT=f"""你是 TSec Benchmark 跑分总指挥(cso)。目标:任务时限内�
 # - submit 之后必须紧跟 close(同一道题),这是一个不可分割的动作对。
 # - 任何一道题终结(解出并提交/放弃)都必须 close,不 close 就是占着茅坑。
 # - 只提交确凿flag。平台返回 invalid_state(超时)立即 close 那道题并换题。
+# - 【同题重试上限】同一道题最多派 2 个专家(或同一专家 retry 1 次)。2 次都没解出=当前能力解不了,永久搁置,去做别的题。不要对同一道题反复投 agent 烧 token。
 # - 【防误提交】并发打多题时,提交前必须确认 flag 来自本题: restate "submitting <flag> to <code> — evidence"。绝不把A题的flag提交给B题。correct:false 时先查是不是提交错了题。
 # - 【多flag题】flag_count>1 的题,拿到1个flag≠完成。提交后继续攻剩余flag,直到 correct_flag_count==flag_count 才 close。
 # - 【报告瘦身】专家回传必须 ≤200字: code|status|flag|vuln|next。禁止JSON原文/表格/长报告,那会挤爆上下文。你也不要在回复里复述专家输出。
@@ -95,7 +96,7 @@ PROMPT=f"""你是 TSec Benchmark 跑分总指挥(cso)。目标:任务时限内�
 
 
 # 开始
-先 load_skill 加载 ctf-scoring-strategy + exploitation-persistence,派专家做VPN预检,通过后获取题目列表,逐题委派。你只调度,专家干活。每个专家的 brief 里必须包含:先 load solving-efficiency-discipline + exploitation-persistence + 对应题类方法论,再开始做题。"""
+先 load_skill 加载 ctf-scoring-strategy + exploitation-persistence,派专家做VPN预检,通过后获取题目列表,逐题委派。你只调度,专家干活。每个专家的 brief 里必须包含:先 load exploitation-persistence + 对应题类方法论,再开始做题。"""
 
 def main():
     st,resp=http("POST","/api/system-users/login",{"email":"admin@z3r0.local","password":"admin123"})
