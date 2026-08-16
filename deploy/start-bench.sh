@@ -16,7 +16,7 @@ APP_DIR=/app
 
 # ---- 托管模式必需环境变量 ----
 # 默认 key 已 bake 进镜像,上传时可不填 LLM_API_KEY(平台若注入同名变量会覆盖此默认值)
-export LLM_API_KEY="${LLM_API_KEY:-${DEEPSEEK_API_KEY:-YOUR_DEEPSEEK_API_KEY}}"
+export LLM_API_KEY="${LLM_API_KEY:-${DEEPSEEK_API_KEY:-sk-394fd41e961a4aa7890393015d0b8b6c}}"
 export LLM_BASE_URL="${LLM_BASE_URL:-http://api.deepseek.com.tsecbench.gw/v1}"
 export LLM_MODEL="${LLM_MODEL:-deepseek-v4-pro}"
 
@@ -42,20 +42,42 @@ for i in $(seq 1 60); do
     sleep 1
 done
 
-# ---- 从环境变量生成 config.json(模型走网关, 统一单一强模型) ----
-echo "[bench] 生成 config.json (model=${LLM_MODEL} base_url=${LLM_BASE_URL}) ..."
+# ---- 从环境变量生成 config.json(双模型: DeepSeek + GLM 混合) ----
+echo "[bench] 生成 config.json (双模型: DeepSeek + GLM) ..."
 mkdir -p "${APP_DIR}/.z3r0"
 python3 - <<PYEOF
 import json, os
 tmpl = json.load(open("${APP_DIR}/hosted_config.json"))
+
+# 主模型(DeepSeek): CSO + cpe(渗透,主力)
+ds_model = os.environ.get("LLM_MODEL", "deepseek-v4-pro")
+ds_url = os.environ.get("LLM_BASE_URL", "http://api.deepseek.com.tsecbench.gw/v1")
+ds_key = os.environ.get("LLM_API_KEY", "")
+
+# 副模型(GLM): cre(逆向) + cae(审计) + cce(密码) + cie(情报)
+glm_model = os.environ.get("GLM_MODEL", "glm-5.2-agent-chanllenge")
+glm_url = os.environ.get("GLM_BASE_URL", "http://agent-awd.baidu.com.tsecbench.gw/v1")
+glm_key = os.environ.get("GLM_API_KEY", "5q9C6VSjEg4sLNDu8dBfBe83326a4a3aA61d3cA6Dd8024Bb")
+
+# 分配策略: CSO+cpe 用 DeepSeek(稳定已验证), 其余用 GLM(智力高换思路)
+ds_roles = {"cso", "cpe"}  # 调度+渗透主力
+glm_roles = {"cre", "cae", "cce", "cie"}  # 逆向/审计/密码/情报
+
 for code in tmpl.get("agents", {}):
-    tmpl["agents"][code]["model"] = os.environ.get("LLM_MODEL", "deepseek-v4-pro")
-    tmpl["agents"][code]["base_url"] = os.environ.get("LLM_BASE_URL", "http://api.deepseek.com.tsecbench.gw/v1")
-    tmpl["agents"][code]["api_key"] = os.environ.get("LLM_API_KEY", "")
+    if code in ds_roles:
+        tmpl["agents"][code]["model"] = ds_model
+        tmpl["agents"][code]["base_url"] = ds_url
+        tmpl["agents"][code]["api_key"] = ds_key
+    else:
+        tmpl["agents"][code]["model"] = glm_model
+        tmpl["agents"][code]["base_url"] = glm_url
+        tmpl["agents"][code]["api_key"] = glm_key
     tmpl["agents"][code]["use_responses"] = False
+
 json.dump(tmpl, open("${APP_DIR}/.z3r0/config.json", "w"), indent=2, ensure_ascii=False)
-print("[bench] config.json 已写入,", len(tmpl.get("agents", {})), "个角色")
+print(f"[bench] config.json 已写入: DS={ds_roles} GLM={glm_roles}")
 PYEOF
+
 
 trap 'echo "[bench] 收到终止信号"; kill -TERM "${PG_PID}" 2>/dev/null; exit 0' TERM INT
 
