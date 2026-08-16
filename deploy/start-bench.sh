@@ -49,33 +49,19 @@ python3 - <<PYEOF
 import json, os
 tmpl = json.load(open("${APP_DIR}/hosted_config.json"))
 
-# 主模型(DeepSeek): CSO + cpe(渗透,主力)
-ds_model = os.environ.get("LLM_MODEL", "deepseek-v4-pro")
-ds_url = os.environ.get("LLM_BASE_URL", "http://api.deepseek.com.tsecbench.gw/v1")
-ds_key = os.environ.get("LLM_API_KEY", "")
-
-# 副模型(GLM): cre(逆向) + cae(审计) + cce(密码) + cie(情报)
-glm_model = os.environ.get("GLM_MODEL", "glm-5.2-agent-chanllenge")
-glm_url = os.environ.get("GLM_BASE_URL", "http://agent-awd.baidu.com.tsecbench.gw/v1")
-glm_key = os.environ.get("GLM_API_KEY", "5q9C6VSjEg4sLNDu8dBfBe83326a4a3aA61d3cA6Dd8024Bb")
-
-# 分配策略: CSO+cpe 用 DeepSeek(稳定已验证), 其余用 GLM(智力高换思路)
-ds_roles = {"cso", "cpe"}  # 调度+渗透主力
-glm_roles = {"cre", "cae", "cce", "cie"}  # 逆向/审计/密码/情报
+# 全部角色统一用 DeepSeek-v4-pro (已验证稳定, 18850分实绩)
+model = os.environ.get("LLM_MODEL", "deepseek-v4-pro")
+base_url = os.environ.get("LLM_BASE_URL", "http://api.deepseek.com.tsecbench.gw/v1")
+api_key = os.environ.get("LLM_API_KEY", "")
 
 for code in tmpl.get("agents", {}):
-    if code in ds_roles:
-        tmpl["agents"][code]["model"] = ds_model
-        tmpl["agents"][code]["base_url"] = ds_url
-        tmpl["agents"][code]["api_key"] = ds_key
-    else:
-        tmpl["agents"][code]["model"] = glm_model
-        tmpl["agents"][code]["base_url"] = glm_url
-        tmpl["agents"][code]["api_key"] = glm_key
+    tmpl["agents"][code]["model"] = model
+    tmpl["agents"][code]["base_url"] = base_url
+    tmpl["agents"][code]["api_key"] = api_key
     tmpl["agents"][code]["use_responses"] = False
 
 json.dump(tmpl, open("${APP_DIR}/.z3r0/config.json", "w"), indent=2, ensure_ascii=False)
-print(f"[bench] config.json 已写入: DS={ds_roles} GLM={glm_roles}")
+print(f"[bench] config.json 已写入, {len(tmpl.get('agents',{}))} 个角色, 模型={model}")
 PYEOF
 
 

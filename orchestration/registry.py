@@ -132,9 +132,7 @@ class AgentRegistry:
             model_settings=ModelSettings(
                 parallel_tool_calls=False,
                 # DeepSeek: disable thinking (prevents multi-turn reasoning_content error)
-                # GLM: reasoning_effort=max (full thinking power, no multi-turn issue)
-                # Both params coexist safely: each model ignores the other's param
-                extra_body={"thinking": {"type": "disabled"}, "reasoning_effort": "max"},
+                extra_body={"thinking": {"type": "disabled"}},
             ),
             instructions=lambda run_context, _: _assemble_instructions(
                 stable_prefix=instructions,

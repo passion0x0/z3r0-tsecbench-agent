@@ -186,5 +186,5 @@ def _get_fallback_cfg(primary_cfg: "AgentConfig") -> "AgentConfig | None":
 
 
 def build_openai_model(cfg: AgentConfig) -> Z3r0OpenAIModel:
-    fallback = _get_fallback_cfg(cfg)
-    return Z3r0OpenAIModel(cfg, fallback_cfg=fallback)
+    # 纯 DeepSeek 单模型,不启用 fallback(稳定优先)
+    return Z3r0OpenAIModel(cfg)
